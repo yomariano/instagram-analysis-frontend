@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-https://instagram-api.teabag.online}
+    networks:
+      - coolify
+    expose:
+      - "3000"  # Only expose to other containers, not to host
+    labels:
+      # Caddy Docker Proxy labels for frontend subdomain
+      - "caddy=instagram-app.teabag.online"
+      - "caddy.reverse_proxy={{upstreams 3000}}"
+      - "caddy.reverse_proxy.health_uri=/"
+      - "caddy.reverse_proxy.health_interval=10s"
+      - "caddy.reverse_proxy.health_timeout=3s"
+      # Additional reliability settings
+      - "caddy.reverse_proxy.lb_policy=round_robin"
+      - "caddy.reverse_proxy.fail_duration=10s"
+      - "caddy.reverse_proxy.max_fails=3"
+      # Coolify management labels
+      - "coolify.managed=true"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://0.0.0.0:3000/"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+networks:
+  coolify:
+    external: true
